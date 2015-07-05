@@ -25,112 +25,90 @@ import java.io.Reader;
 
 public class CSVParser {
 
-   final byte ST_NOT_STARTED = 0;
-   final byte ST_DATA_STARTED_WITHOUT_QUOTE = 1;
-   final byte ST_DATA_STARTED_WITH_QUOTE = 2;
-   final byte ST_QUOTE_WITHIN_QUOTE = 3;
-   final byte ST_DATA_ENDED_WITH_QUOTE = 4;
-   final byte ST_FIELD_ENDED = 5;
+    final byte ST_NOT_STARTED = 0;
+    final byte ST_DATA_STARTED_WITHOUT_QUOTE = 1;
+    final byte ST_DATA_STARTED_WITH_QUOTE = 2;
+    final byte ST_QUOTE_WITHIN_QUOTE = 3;
+    final byte ST_DATA_ENDED_WITH_QUOTE = 4;
+    final byte ST_FIELD_ENDED = 5;
 
-   int line_no = 1;
-   int col_no = 1;
-   boolean isWithinComment = false;
-   boolean isEOL = false;
-   boolean isEOS = false;
-   byte state = ST_NOT_STARTED;
-   ExceptionHandler ex;
-   StringBuffer data = new StringBuffer();
-   StringBuffer backlog = new StringBuffer();
-   String reinsertedToken = null;
-   String lastToken = null;
-   int reinsertedChar = -1;
-   int lastChar = -1;
-   int max_value_len = 65535;
+    boolean isWithinComment = false;
+    boolean isEOL = false;
+    boolean isEOS = false;
+    byte state = ST_NOT_STARTED;
+    Counter counter = null;
+    ExceptionHandler ex = null;
+    StringBuffer data = new StringBuffer();
+    StringBuffer backlog = new StringBuffer();
+    String reinsertedToken = null;
+    String lastToken = null;
+    int reinsertedChar = -1;
+    int lastChar = -1;
+    int max_value_len = 65535;
 
-   public CSVParser(ExceptionHandler e) {
-       ex = e;
-       reset();
-   }
+    public CSVParser(Counter c, ExceptionHandler e) {
+        ex = e;
+        counter = c;
+        reset();
+    }
 
-   private void increment_counters(char c) {
-      if (c == '\n') {
-         this.line_no++;
-         this.col_no = 1;
-      } else
-      this.col_no++;
-   }
+    private boolean checkEOF(int c, StringBuffer data) {
+        if (c == ',') {
+            state = ST_FIELD_ENDED;
+            isEOL = false;
+        } else if (c == '\n') {
+            state = ST_FIELD_ENDED;
+            isEOL = true;
+            int lastPos = data.length() - 1;
+            if (lastPos > -1 && data.charAt(lastPos) == '\r')
+                data.setLength(lastPos);
+        } else
+            return false;
+        return true;
+    }
 
-   private void decrement_counters(char c) {
-      if (c == '\n') {
-         this.line_no--;
-         this.col_no = 1;
-      } else
-         this.col_no--;
-   }
-
-   private void reset_counters() {
-      this.line_no = 1;
-      this.col_no = 1;
-   }
-
-   private boolean checkEOF(int c, StringBuffer data) {
-      if (c == ',') {
-         state = ST_FIELD_ENDED;
-         isEOL = false;
-      } else
-      if (c == '\n') {
-         state = ST_FIELD_ENDED;
-         isEOL = true;
-         int lastPos = data.length()-1;
-         if (lastPos > -1 && data.charAt(lastPos) == '\r')
-            data.setLength(lastPos);
-      } else
-         return false;
-      return true;
-   }
-
-   private String windUp(StringBuffer data) {
+    private String windUp(StringBuffer data) {
         isEOS = true;
         isEOL = true;
         state = ST_NOT_STARTED;
         return data.toString();
-   }
+    }
 
-   public static String encodeToCSVText(String value) {
-      if (value == null)
-         return value;
-      if (value.indexOf(',') != -1 || value.indexOf('\n') != -1
-           || value.indexOf("/*") != -1) {
-         if (value.indexOf('"') != -1)
-            value = value.replace("\"", "\"\"");
-         value = ("\"" + value + "\"");
-      }
-      return value;
-   }
+    public static String encodeToCSVText(String value) {
+        if (value == null)
+            return value;
+        if (value.indexOf(',') != -1 || value.indexOf('\n') != -1
+                || value.indexOf("/*") != -1) {
+            if (value.indexOf('"') != -1)
+                value = value.replace("\"", "\"\"");
+            value = ("\"" + value + "\"");
+        }
+        return value;
+    }
 
-   public void reset() {
-       state = ST_NOT_STARTED;
-       reset_counters();
-   }
+    public void reset() {
+        state = ST_NOT_STARTED;
+        counter.reset_counters();
+    }
 
-   public int readChar(Reader r) throws IOException {
-       int i;
-       try {
-          i = r.read();
-       } catch (IOException e) {
-          if (ex != null)
-             ex.set_err(ExceptionHandler.E_IO, this);
-          throw e;
-       }
-       lastChar = i;
-       return i;
-   }
+    public int readChar(Reader r) throws IOException {
+        int i;
+        try {
+            i = r.read();
+        } catch (IOException e) {
+            if (ex != null)
+                ex.set_err(ExceptionHandler.E_IO);
+            throw e;
+        }
+        lastChar = i;
+        return i;
+    }
 
     public void processChar(int i) {
         char c = (char) (i & 0xFFFF);
         if (isWithinComment) {
-           increment_counters(c);
-           return;
+            counter.increment_counters(c);
+            return;
         }
         switch (state) {
         case ST_NOT_STARTED:
@@ -169,7 +147,7 @@ public class CSVParser {
                 state = ST_DATA_ENDED_WITH_QUOTE;
             } else {
                 state = ST_DATA_STARTED_WITH_QUOTE;
-                ex.add_warn(ExceptionHandler.W_CHAR_INVALID, this);
+                ex.add_warn(ExceptionHandler.W_CHAR_INVALID);
                 data.append(c);
             }
             break;
@@ -177,100 +155,87 @@ public class CSVParser {
             if (c == ' ' || c == '\t') {
             } else if (checkEOF(c, data)) {
             } else
-                ex.add_warn(ExceptionHandler.W_CHAR_INVALID, this);
+                ex.add_warn(ExceptionHandler.W_CHAR_INVALID);
             break;
         }
-        increment_counters(c);
+        counter.increment_counters(c);
     }
 
-   public void reinsertLastToken() {
-       reinsertedToken = lastToken;
-   }
+    public void reinsertLastToken() {
+        reinsertedToken = lastToken;
+    }
 
-   public void reInsertLastChar() {
-       reinsertedChar = lastChar;
-       decrement_counters((char)lastChar);
-   }
+    public void reInsertLastChar() {
+        reinsertedChar = lastChar;
+        counter.decrement_counters((char) lastChar);
+    }
 
-   public String parseNextToken(Reader r) throws IOException {
-       if (reinsertedToken != null) {
-           String ret = reinsertedToken;
-           reinsertedToken = null;
-           return ret;
-       }
-       if (state == ST_FIELD_ENDED) {
-           isEOL = false;
-           state = ST_NOT_STARTED;
-           backlog.setLength(0);
-       }
-       int c = reinsertedChar;
-       if (c == -1)
-          c = readChar(r);
-       else
-          reinsertedChar = -1;
-       while (state != ST_FIELD_ENDED) {
-           if (c == -1)
-              return windUp(data);
-           if (c == '/' && !isWithinComment &&
-                   state != ST_DATA_STARTED_WITH_QUOTE) {
-              int c_next = readChar(r);
-              if (c_next == -1) {
-                 processChar(c);
-                 return windUp(data);
-              }
-              if (c_next == '*')
-                  isWithinComment = true;
-              else {
-                  processChar(c);
-                  processChar(c_next);
-              }
-           } else
-           if (c == '*' && isWithinComment &&
-                 state != ST_DATA_STARTED_WITH_QUOTE) {
-              int c_next = readChar(r);
-              if (c_next == -1) {
-                 processChar(c);
-                 return windUp(data);
-              }
-              if (c_next == '/')
-                  isWithinComment = false;
-              else {
-                  processChar(c);
-                  processChar(c_next);
-              }
-           } else
-              processChar(c);
-          if (state != ST_FIELD_ENDED)
-             c = readChar(r);
-       }
-       String ret = data.toString();
-       data.setLength(0);
-       lastToken = ret;
-       return ret;
-   }
+    public String parseNextToken(Reader r) throws IOException {
+        if (reinsertedToken != null) {
+            String ret = reinsertedToken;
+            reinsertedToken = null;
+            return ret;
+        }
+        if (state == ST_FIELD_ENDED) {
+            isEOL = false;
+            state = ST_NOT_STARTED;
+            backlog.setLength(0);
+        }
+        int c = reinsertedChar;
+        if (c == -1)
+            c = readChar(r);
+        else
+            reinsertedChar = -1;
+        while (state != ST_FIELD_ENDED) {
+            if (c == -1)
+                return windUp(data);
+            if (c == '/' && !isWithinComment
+                    && state != ST_DATA_STARTED_WITH_QUOTE) {
+                int c_next = readChar(r);
+                if (c_next == -1) {
+                    processChar(c);
+                    return windUp(data);
+                }
+                if (c_next == '*')
+                    isWithinComment = true;
+                else {
+                    processChar(c);
+                    processChar(c_next);
+                }
+            } else if (c == '*' && isWithinComment
+                    && state != ST_DATA_STARTED_WITH_QUOTE) {
+                int c_next = readChar(r);
+                if (c_next == -1) {
+                    processChar(c);
+                    return windUp(data);
+                }
+                if (c_next == '/')
+                    isWithinComment = false;
+                else {
+                    processChar(c);
+                    processChar(c_next);
+                }
+            } else
+                processChar(c);
+            if (state != ST_FIELD_ENDED)
+                c = readChar(r);
+        }
+        String ret = data.toString();
+        data.setLength(0);
+        lastToken = ret;
+        return ret;
+    }
 
     public boolean isEOL() {
         return isEOL;
     }
-    
+
     public boolean isEOS() {
         return isEOS;
     }
 
-    public int getLineNo() {
-        return line_no;
-    }
-
-    public void setLineNo(int line_no) {
-        this.line_no = line_no;
-    }
-
-    public int getColNo() {
-        return col_no;
-    }
-
-    public void setColNo(int col_no) {
-        this.col_no = col_no;
+    public Counter getCounter() {
+        return counter;
     }
 
 }

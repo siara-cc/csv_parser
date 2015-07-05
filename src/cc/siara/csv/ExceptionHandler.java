@@ -25,7 +25,7 @@ import java.util.List;
 public class ExceptionHandler {
 
     String lang = "en-US";
-    public short error_code;
+    private short error_code;
     public int err_line_no;
     public int err_col_no;
 
@@ -37,6 +37,8 @@ public class ExceptionHandler {
     public List<Integer> validation_col_nos;
     Hashtable<String, String[]> msgs = new Hashtable<String, String[]>();
 
+    Counter counter = null;
+
     public static final short E_IO = 1;
     public static final short W_CHAR_INVALID = 2;
     public static final short E_SCH_START_WITH_SPACE = 3;
@@ -46,18 +48,17 @@ public class ExceptionHandler {
     public static final short E_NODE_NOT_FOUND = 7;
     public static final short E_ONLY_ONE_ROOT = 8;
 
-    public ExceptionHandler() {
+    public ExceptionHandler(Counter counter) {
        msgs.put("en-US", new String[] {""
         , "IOException"
         , "Unexpected character"
-        , "Schema definition cannot begin with a space"
-        , "Duplicate node definition"
-        , "Cannot go down two levels"
-        , "Too many characters in a column"
-        , "Node not found"
-        , "There can be only one root node"
         });
+       this.counter = counter;
        reset_exceptions();
+    }
+
+    public void setMsgs(String lang, String[] lang_msgs) {
+        msgs.put(lang, lang_msgs);
     }
 
     public void reset_exceptions() {
@@ -109,22 +110,22 @@ public class ExceptionHandler {
         return val_msgs.toString();
     }
 
-    public void set_err(short err_code, CSVParser csv_parser) {
+    public void set_err(short err_code) {
         this.error_code = err_code;
-        this.err_line_no = csv_parser.line_no;
-        this.err_col_no = csv_parser.col_no;
+        this.err_line_no = counter.line_no;
+        this.err_col_no = counter.col_no;
     }
 
-    public void add_warn(short warn_code, CSVParser csv_parser) {
+    public void add_warn(short warn_code) {
         this.warning_codes.add(warn_code);
-        this.warning_line_nos.add(csv_parser.line_no);
-        this.warning_col_nos.add(csv_parser.col_no);
+        this.warning_line_nos.add(counter.line_no);
+        this.warning_col_nos.add(counter.col_no);
     }
 
-    public void add_val_err(short val_code, CSVParser csv_parser) {
+    public void add_val_err(short val_code) {
         this.validation_codes.add(val_code);
-        this.validation_line_nos.add(csv_parser.line_no);
-        this.validation_col_nos.add(csv_parser.col_no);
+        this.validation_line_nos.add(counter.line_no);
+        this.validation_col_nos.add(counter.col_no);
     }
 
     public String get_all_exceptions() {
@@ -136,6 +137,10 @@ public class ExceptionHandler {
        String val_msg = this.get_val_messages();
        if (val_msg != "") ex_str.append("Validation Error(s):\n").append(val_msg);
        return ex_str.toString();
+    }
+
+    public short getErrorCode() {
+        return error_code;
     }
 
 }
