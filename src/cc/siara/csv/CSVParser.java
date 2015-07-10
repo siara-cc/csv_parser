@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 arun@siara.cc
+ * Copyright (C) 2015 Siara Logics (cc)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,24 @@ public class CSVParser {
     int reinsertedChar = -1;
     int lastChar = -1;
     int max_value_len = 65535;
+
+    public CSVParser() {
+        counter = new Counter();
+        ex = new ExceptionHandler(counter);
+        reset();
+    }
+
+    public CSVParser(int max) {
+        this();
+        max_value_len = max;
+    }
+
+    public CSVParser(Counter c, ExceptionHandler e, int max) {
+        ex = e;
+        counter = c;
+        max_value_len = max;
+        reset();
+    }
 
     public CSVParser(Counter c, ExceptionHandler e) {
         ex = e;
@@ -121,34 +139,42 @@ public class CSVParser {
             } else {
                 state = ST_DATA_STARTED_WITHOUT_QUOTE;
                 if (backlog.length() > 0) {
-                    data.append(backlog);
+                    if (data.length() < max_value_len)
+                        data.append(backlog);
                     backlog.setLength(0);
                 }
-                data.append(c);
+                if (data.length() < max_value_len)
+                    data.append(c);
             }
             break;
         case ST_DATA_STARTED_WITHOUT_QUOTE:
             if (checkEOF(c, data)) {
-            } else
-                data.append(c);
+            } else {
+                if (data.length() < max_value_len)
+                    data.append(c);
+            }
             break;
         case ST_DATA_STARTED_WITH_QUOTE:
             if (c == '"')
                 state = ST_QUOTE_WITHIN_QUOTE;
-            else
-                data.append(c);
+            else {
+                if (data.length() < max_value_len)
+                    data.append(c);
+            }
             break;
         case ST_QUOTE_WITHIN_QUOTE:
             if (c == '"') {
                 state = ST_DATA_STARTED_WITH_QUOTE;
-                data.append(c);
+                if (data.length() < max_value_len)
+                    data.append(c);
             } else if (checkEOF(c, data)) {
             } else if (c == ' ' || c == '\t' || c == '\r') {
                 state = ST_DATA_ENDED_WITH_QUOTE;
             } else {
                 state = ST_DATA_STARTED_WITH_QUOTE;
                 ex.add_warn(ExceptionHandler.W_CHAR_INVALID);
-                data.append(c);
+                if (data.length() < max_value_len)
+                    data.append(c);
             }
             break;
         case ST_DATA_ENDED_WITH_QUOTE:

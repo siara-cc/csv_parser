@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 arun@siara.cc
+ * Copyright (C) 2015 Siara Logics (cc)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,12 +41,6 @@ public class ExceptionHandler {
 
     public static final short E_IO = 1;
     public static final short W_CHAR_INVALID = 2;
-    public static final short E_SCH_START_WITH_SPACE = 3;
-    public static final short E_DUPLICATE_NODE = 4;
-    public static final short E_DOWN_2_LEVELS = 5;
-    public static final short E_TOO_MANY_CHARS = 6;
-    public static final short E_NODE_NOT_FOUND = 7;
-    public static final short E_ONLY_ONE_ROOT = 8;
 
     public ExceptionHandler(Counter counter) {
        msgs.put("en-US", new String[] {""
