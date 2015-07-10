@@ -19,12 +19,16 @@
 package cc.siara.csv;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.Reader;
 
+/**
+ * CSV Token Parser
+ * 
+ * @author Arundale R.
+ */
 public class CSVParser {
 
+    // Parsing states
     final byte ST_NOT_STARTED = 0;
     final byte ST_DATA_STARTED_WITHOUT_QUOTE = 1;
     final byte ST_DATA_STARTED_WITH_QUOTE = 2;
@@ -32,6 +36,7 @@ public class CSVParser {
     final byte ST_DATA_ENDED_WITH_QUOTE = 4;
     final byte ST_FIELD_ENDED = 5;
 
+    // Members and transients
     boolean isWithinComment = false;
     boolean isEOL = false;
     boolean isEOS = false;
@@ -46,17 +51,36 @@ public class CSVParser {
     int lastChar = -1;
     int max_value_len = 65535;
 
+    /**
+     * Initializes a CSV Parser with internal counter and ExceptionHandler
+     */
     public CSVParser() {
         counter = new Counter();
         ex = new ExceptionHandler(counter);
         reset();
     }
 
+    /**
+     * Initializes a CSV Parser with internal counter and ExceptionHandler
+     * 
+     * @param max
+     *            Maximum allowable characters in a column
+     */
     public CSVParser(int max) {
         this();
         max_value_len = max;
     }
 
+    /**
+     * Initializes a CSV Parser with given Counter and ExceptionHandler
+     * 
+     * @param c
+     *            Given Counter object
+     * @param e
+     *            Given Exception Handler object
+     * @param max
+     *            Maximum allowable characters in a column
+     */
     public CSVParser(Counter c, ExceptionHandler e, int max) {
         ex = e;
         counter = c;
@@ -64,12 +88,30 @@ public class CSVParser {
         reset();
     }
 
+    /**
+     * Initializes a CSV Parser with given Counter and ExceptionHandler
+     * 
+     * @param c
+     *            Given Counter object
+     * @param e
+     *            Given Exception Handler object
+     */
     public CSVParser(Counter c, ExceptionHandler e) {
         ex = e;
         counter = c;
         reset();
     }
 
+    /**
+     * Checks whether End of Field reached based on current character
+     * 
+     * @param c
+     *            Current character
+     * @param data
+     *            Current field value for removing dummy \r (Carriage Return),
+     *            if any
+     * @return
+     */
     private boolean checkEOF(int c, StringBuffer data) {
         if (c == ',') {
             state = ST_FIELD_ENDED;
@@ -85,6 +127,13 @@ public class CSVParser {
         return true;
     }
 
+    /**
+     * Sets states End of Line and End of Stream to indicate end of parsing
+     * 
+     * @param data
+     *            Return value
+     * @return Last column data
+     */
     private String windUp(StringBuffer data) {
         isEOS = true;
         isEOL = true;
@@ -92,23 +141,22 @@ public class CSVParser {
         return data.toString();
     }
 
-    public static String encodeToCSVText(String value) {
-        if (value == null)
-            return value;
-        if (value.indexOf(',') != -1 || value.indexOf('\n') != -1
-                || value.indexOf("/*") != -1) {
-            if (value.indexOf('"') != -1)
-                value = value.replace("\"", "\"\"");
-            value = ("\"" + value + "\"");
-        }
-        return value;
-    }
-
+    /**
+     * Resets the instance so that it can be used and re-used.
+     */
     public void reset() {
         state = ST_NOT_STARTED;
         counter.reset_counters();
     }
 
+    /**
+     * Encapsulates reading a character from the stream.
+     * 
+     * @param r
+     *            Stream being read
+     * @return Character read from stream
+     * @throws IOException
+     */
     public int readChar(Reader r) throws IOException {
         int i;
         try {
@@ -122,6 +170,17 @@ public class CSVParser {
         return i;
     }
 
+    /**
+     * Processes given character i according to current state. For each state,
+     * the if statements decide whether to stay in the current state or jump to
+     * another. Each state has its own set of decision tree.
+     * 
+     * The backlog variable keeps characters when a series of spaces and tabs
+     * are found at the beginning of a field. If a quote is found consequently,
+     * backlog is ignored, otherwise it is appended to data.
+     * 
+     * @param i
+     */
     public void processChar(int i) {
         char c = (char) (i & 0xFFFF);
         if (isWithinComment) {
@@ -187,15 +246,32 @@ public class CSVParser {
         counter.increment_counters(c);
     }
 
+    /**
+     * Puts back one field parsed from stream.
+     */
     public void reinsertLastToken() {
         reinsertedToken = lastToken;
     }
 
+    /**
+     * Puts back one character read from stream.
+     */
     public void reInsertLastChar() {
         reinsertedChar = lastChar;
         counter.decrement_counters((char) lastChar);
     }
 
+    /**
+     * Gets next token by parsing characters from the stream.
+     * 
+     * A comment is processed separately from the main state machine. Whenever
+     * not within a comment, this method calls processChar to process the
+     * character using the state machine.
+     * 
+     * @param r
+     * @return
+     * @throws IOException
+     */
     public String parseNextToken(Reader r) throws IOException {
         if (reinsertedToken != null) {
             String ret = reinsertedToken;
@@ -252,14 +328,29 @@ public class CSVParser {
         return ret;
     }
 
+    /**
+     * Reports end of line.
+     * 
+     * @return true if End of line reached, false otherwise.
+     */
     public boolean isEOL() {
         return isEOL;
     }
 
+    /**
+     * Reports end of stream.
+     * 
+     * @return true if End of stream reached, false otherwise.
+     */
     public boolean isEOS() {
         return isEOS;
     }
 
+    /**
+     * Getter for the Counter object
+     * 
+     * @return Counter object
+     */
     public Counter getCounter() {
         return counter;
     }

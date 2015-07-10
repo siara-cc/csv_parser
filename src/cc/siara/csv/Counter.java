@@ -18,44 +18,82 @@
  */
 package cc.siara.csv;
 
+/**
+ * Maintains line number and column number during parsing
+ * 
+ * @author Arundale R.
+ */
 public class Counter {
 
+    // members
     protected int line_no = 1;
     protected int col_no = 1;
 
+    /**
+     * Increments line number and column number based on current character.
+     * 
+     * @param c Current character
+     */
     public void increment_counters(char c) {
         if (c == '\n') {
-           line_no++;
-           col_no = 1;
+            line_no++;
+            col_no = 1;
         } else
-        col_no++;
-     }
+            col_no++;
+    }
 
-     public void decrement_counters(char c) {
+    /**
+     * Decrements line number and column number based on current character.
+     * 
+     * @param c Current character
+     */
+    public void decrement_counters(char c) {
         if (c == '\n') {
-           line_no--;
-           col_no = 1;
+            line_no--;
+            col_no = 1;
         } else
-           col_no--;
-     }
+            col_no--;
+    }
 
-     public void reset_counters() {
+    /**
+     * Resets counters
+     */
+    public void reset_counters() {
         line_no = 1;
         col_no = 1;
-     }
+    }
 
+    /**
+     * Getter for Line number
+     * @return Current Line number
+     */
     public int getLineNo() {
         return line_no;
     }
 
+    /**
+     * Setter for Current line number
+     * 
+     * @param line_no
+     */
     public void setLineNo(int line_no) {
         this.line_no = line_no;
     }
 
+    /**
+     * Getter for current column number
+     * 
+     * @return Current column number
+     */
     public int getColNo() {
         return col_no;
     }
 
+    /**
+     * Setter for Current column number
+     * 
+     * @param col_no
+     */
     public void setColNo(int col_no) {
         this.col_no = col_no;
     }
