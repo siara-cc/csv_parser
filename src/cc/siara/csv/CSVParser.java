@@ -146,7 +146,15 @@ public class CSVParser {
      */
     public void reset() {
         state = ST_NOT_STARTED;
+        isEOS = false;
+        isEOL = false;
         counter.reset_counters();
+        data = new StringBuffer();
+        backlog = new StringBuffer();
+        reinsertedToken = null;
+        lastToken = null;
+        reinsertedChar = -1;
+        lastChar = -1;
     }
 
     /**
