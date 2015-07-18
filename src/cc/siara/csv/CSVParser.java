@@ -50,6 +50,8 @@ public class CSVParser {
     int reinsertedChar = -1;
     int lastChar = -1;
     int max_value_len = 65535;
+    private char delimiter = ',';
+    private char alt_whitespace = '\t';
 
     /**
      * Initializes a CSV Parser with internal counter and ExceptionHandler
@@ -103,6 +105,18 @@ public class CSVParser {
     }
 
     /**
+     * Sets delimiter character used for parsing
+     * 
+     * @param d Delimiter
+     */
+    public void setDelimiter(char d) {
+        this.delimiter  = d;
+        this.alt_whitespace = '\t';
+        if (d == '\t')
+            this.alt_whitespace = ' ';
+    }
+
+    /**
      * Checks whether End of Field reached based on current character
      * 
      * @param c
@@ -113,7 +127,7 @@ public class CSVParser {
      * @return
      */
     private boolean checkEOF(int c, StringBuffer data) {
-        if (c == ',') {
+        if (c == this.delimiter) {
             state = ST_FIELD_ENDED;
             isEOL = false;
         } else if (c == '\n') {
@@ -197,7 +211,7 @@ public class CSVParser {
         }
         switch (state) {
         case ST_NOT_STARTED:
-            if (c == ' ' || c == '\t') {
+            if (c == ' ' || c == alt_whitespace) {
                 backlog.append(c);
             } else if (checkEOF(c, data)) {
             } else if (c == '"') {
@@ -235,7 +249,7 @@ public class CSVParser {
                 if (data.length() < max_value_len)
                     data.append(c);
             } else if (checkEOF(c, data)) {
-            } else if (c == ' ' || c == '\t' || c == '\r') {
+            } else if (c == ' ' || c == alt_whitespace || c == '\r') {
                 state = ST_DATA_ENDED_WITH_QUOTE;
             } else {
                 state = ST_DATA_STARTED_WITH_QUOTE;
@@ -245,7 +259,7 @@ public class CSVParser {
             }
             break;
         case ST_DATA_ENDED_WITH_QUOTE:
-            if (c == ' ' || c == '\t') {
+            if (c == ' ' || c == alt_whitespace) {
             } else if (checkEOF(c, data)) {
             } else
                 ex.add_warn(ExceptionHandler.W_CHAR_INVALID);
