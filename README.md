@@ -6,3 +6,7 @@ In addition, it has following advanced features:
 * support stream (java.io.Reader/InputStream) for better memory management
 * allows pull parsing (returns token by token)
 * Restricts token size to pre-defined level to prevent out-of-memory error (buffer overrun)
+
+Complete documentation available at http://java-csv-parser.science
+
+For feedback / clarification, please contact arun@siara.cc.
